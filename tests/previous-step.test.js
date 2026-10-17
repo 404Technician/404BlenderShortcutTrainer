@@ -1,3 +1,4 @@
+import {projectPoint} from '../js/geometry.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {lessons} from '../js/lessons.js';
@@ -45,7 +46,7 @@ test('snapshot validation drops malformed entries while preserving progress and 
  const app=await createApp(seedAt(3,6));try{const d=app.saved(),key=stepKey(3,5),good=d.starts[key];d.starts['999:999']=good;d.starts['0:0']={scene:{bad:true},history:[],future:[]};const clean=sanitizeStarts(d.starts);assert.ok(clean[key]);assert.equal(clean['999:999'],undefined);assert.equal(clean['0:0'],undefined);const p=new Progress({getItem:()=>JSON.stringify(d),setItem(){}});assert.equal(p.data.lesson,3);assert.equal(p.data.step,6);assert.deepEqual(p.data.starts[key],good);}finally{app.close();}
 });
 test('angular Rotate completes with Enter or left-click and cancels with Esc or right-click',async()=>{
- for(const close of ['Enter','left-click','Esc','right-click']){const app=await createApp(seedAt(1,1));try{const e=app.elements;e.practice.focus();const before=app.saved();app.key('R');const o=before.scene.objects[0],x=360+o.x,y=345*.56;emit(e.practice,'pointermove',{target:e.canvas,clientX:x+70,clientY:y});emit(e.practice,'pointermove',{target:e.canvas,clientX:x+60,clientY:y+35});
+ for(const close of ['Enter','left-click','Esc','right-click']){const app=await createApp(seedAt(1,1));try{const e=app.elements;e.practice.focus();const before=app.saved();app.key('R');const o=before.scene.objects[0],[x,y]=projectPoint([o.x,o.y,o.z],before.scene,720,345);emit(e.practice,'pointermove',{target:e.canvas,clientX:x+70,clientY:y});emit(e.practice,'pointermove',{target:e.canvas,clientX:x+60,clientY:y+35});
  if(close.includes('click'))emit(e.practice,'pointerdown',{target:e.canvas,button:close==='left-click'?0:2});else app.key(close);
  if(['Enter','left-click'].includes(close)){assert.equal(app.saved().step,2);assert.ok(app.saved().scene.objects[0].rotation);app.advance();assert.equal(e.mission.textContent,lessons[1].steps[2].mission);}else{assert.equal(app.saved().step,1);assert.deepEqual(app.saved().scene,before.scene);assert.match(e.feedback.textContent,/Cancelled/);app.complete();assert.equal(app.saved().step,2);}
  }finally{app.close();}}

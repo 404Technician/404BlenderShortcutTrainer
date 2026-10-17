@@ -4,7 +4,7 @@ import {Viewport} from '../js/viewport.js';
 import {camera} from '../js/geometry.js';
 function makeView(){globalThis.ResizeObserver=class{observe(){}};globalThis.window={devicePixelRatio:1};const ctx=new Proxy({},{get:(o,k)=>o[k]||(()=>{}),set:(o,k,v)=>(o[k]=v,true)});return new Viewport({getContext:()=>ctx,clientWidth:700,clientHeight:345});}
 test('axis moves and numeric Z use exact scene coordinates',()=>{const v=makeView();for(const axis of ['x','y','z']){v.reset();v.begin('move');v.constrain(axis);v.adjust(2);assert.equal(v.active()[axis],2);for(const other of ['x','y','z'].filter(a=>a!==axis))assert.equal(v.active()[other],0);v.confirm();assert.equal(v.modal,null);}});
-test('move cancellation restores scene, duplicate undo/redo preserves originals',()=>{const v=makeView();v.begin('move');v.adjust(3);v.cancel();assert.equal(v.active().x,0);v.begin('duplicate');v.adjust(2);v.confirm();assert.equal(v.state.objects.length,2);assert.equal(v.state.objects[0].x,0);assert.equal(v.state.objects[1].x,2);v.apply('undo');assert.equal(v.state.objects.length,1);v.apply('redo');assert.equal(v.state.objects.length,2);});
+test('move cancellation restores scene, duplicate undo/redo preserves originals',()=>{const v=makeView();v.begin('move');v.adjust(3);v.cancel();assert.equal(v.active().x,0);v.begin('duplicate');v.constrain('x');v.adjust(2);v.confirm();assert.equal(v.state.objects.length,2);assert.equal(v.state.objects[0].x,0);assert.equal(v.state.objects[1].x,2);v.apply('undo');assert.equal(v.state.objects.length,1);v.apply('redo');assert.equal(v.state.objects.length,2);});
 test('edit selections, extrusion, inset and deletion remain separate actions',()=>{const v=makeView();v.apply('edit');for(const type of ['vertices','edges','faces']){v.apply(type);assert.equal(v.state.selection,type);}v.apply('top');v.begin('extrude');v.adjust(1);v.confirm();assert.equal(v.active().extrusion,1);v.begin('inset');v.adjust(.5);v.confirm();assert.ok(v.active().inset>0);v.apply('object');assert.equal(v.state.mode,'object');v.apply('delete');assert.equal(v.state.objects.length,0);v.apply('undo');assert.equal(v.state.objects.length,1);v.apply('save');assert.equal(v.state.saved,true);});
 test('orbit, pan and zoom affect camera only',()=>{const v=makeView();const original=structuredClone(v.active());v.navigate('orbit',30,20);assert.notEqual(v.state.yaw,.55);v.navigate('pan',30,20);assert.equal(v.state.panX,30);v.navigate('zoom',40);assert.ok(v.state.zoom>1);assert.deepEqual(v.active(),original);});
 test('default MMB orbit independently follows left, right, up and down drags at every zoom',()=>{
@@ -33,7 +33,7 @@ test('pan and wheel zoom directions remain unchanged and preserve object transfo
  assert.equal(v.state.yaw,yaw);assert.equal(v.state.pitch,pitch);assert.deepEqual(v.state.objects,objects);
 });
 test('duplicate absolute displacement never accumulates between pointer events',()=>{
- for(const action of ['move','duplicate']){const v=makeView();v.begin(action);for(const amount of [0,.1,.2,.3,.3])v.adjust(amount);assert.ok(Math.abs(v.active().x-.3)<1e-10,`${action} drifted to ${v.active().x}`);}
+ for(const action of ['move','duplicate']){const v=makeView();v.begin(action);v.constrain('x');for(const amount of [0,.1,.2,.3,.3])v.adjust(amount);assert.ok(Math.abs(v.active().x-.3)<1e-10,`${action} drifted to ${v.active().x}`);}
 });
 test('G and Shift+D share pointer sensitivity across viewport sizes, zoom and axes',()=>{
  for(const [w,h] of [[320,300],[768,345],[1280,500]])for(const zoom of [.4,1,2.1])for(const axis of [null,'x','y','z']){

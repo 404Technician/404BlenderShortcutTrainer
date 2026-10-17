@@ -11,12 +11,19 @@ export function sanitizeStarts(starts){
 export function restoreStart(view,start){view.cancel();const s=structuredClone(start);view.state=s.scene;view.history=s.history;view.future=s.future;view.draw();}
 // Compatibility fallback for old saves: replay the lesson prerequisites using the
 // same viewport operations. New visits use exact persisted starting snapshots.
+export function prepareStep(scene,step){
+ // Teaching prerequisites describe the scene before the command, never its result.
+ if(step.action==='faces'){scene.selection='edges';scene.top=false;}
+ if(step.id==='all')scene.objects.forEach(o=>o.selected=false);
+}
 export function initializeStep(view,lesson,step){
  view.reset();for(const s of lessons[lesson].steps.slice(0,step)){
- if(s.modal){view.begin(s.action,{freeXY:s.freeXY===true,viewAligned:s.viewAligned===true});if(s.axis)view.constrain(s.axis);view.adjust(s.numeric||1.1);if(s.cancel)view.cancel();else view.confirm();}
+ prepareStep(view.state,s);
+ if(s.modal){view.begin(s.action);if(s.axis)view.constrain(s.axis);view.adjust(s.numeric||1.1);if(s.cancel)view.cancel();else view.confirm();}
  else if(['orbit','pan','zoom'].includes(s.action))view.navigate(s.action,80,25);
  else if(s.action!=='search')view.apply(s.action);
  }
+ prepareStep(view.state,lessons[lesson].steps[step]);
  return captureStart(view);
 }
 export function bestSteps(data){
