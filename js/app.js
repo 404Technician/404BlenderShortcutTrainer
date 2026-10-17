@@ -2,7 +2,7 @@ import {lessons,deck} from './lessons.js';
 import {InputEngine,normalizeKey} from './input-engine.js';
 import {Viewport,initialScene} from './viewport.js';
 import {Progress} from './progress.js';
-import {stepKey,captureStart,restoreStart,initializeStep} from './exercise-state.js';
+import {stepKey,captureStart,restoreStart,initializeStep,prepareStep} from './exercise-state.js';
 const $=id=>document.getElementById(id),engine=new InputEngine(),view=new Viewport($('canvas'));
 let storage;try{storage=window.localStorage;}catch{storage={getItem(){throw Error('Unavailable');},setItem(){throw Error('Unavailable');}};}
 const progress=new Progress(storage);
@@ -42,6 +42,8 @@ function keyGuide(){const s=current();$('key-guide').replaceChildren();$('instru
  if(s.modal&&!s.numeric){const note=document.createElement('small');note.textContent=s.cancel?'then Esc / right-click':'then adjust + Enter / left-click · arrows adjust in this trainer';$('key-guide').append(note);}
 }
 function render(){
+ const beforePreparation=JSON.stringify(view.state);prepareStep(view.state,current());
+ if(JSON.stringify(view.state)!==beforePreparation){progress.data.starts[stepKey(lesson,stepIndex)]=captureStart(view);view.draw();persist();}
  if(!progress.data.finished&&!progress.data.starts[stepKey(lesson,stepIndex)]){progress.data.starts[stepKey(lesson,stepIndex)]=captureStart(view);persist();}
  const s=current();engine.reset(s.keys);busy=false;hints=0;mistakes=0;$('nav-demo').textContent='Show navigation demonstration';$('nav-demo').onclick=navigationDemo;$('lesson-label').textContent=`LESSON ${lesson+1} OF 6`;$('lesson-title').textContent=lessons[lesson].title;$('dialogue').textContent=lessons[lesson].intro;$('mission').textContent=s.mission;$('explanation').textContent=s.explanation;$('hint-text').textContent='';$('feedback').textContent=progress.available?'Click Start practice, then follow Tavi’s mission.':'Local storage is unavailable. You can practice, but progress will not survive reload.';$('exercise-count').textContent=`Exercise ${stepIndex+1} / ${lessons[lesson].steps.length}`;$('operation').textContent='Focus the viewport to practice';$('navigation-alternative').hidden=lesson!==0;$('completion').hidden=!progress.data.finished;pose(final()?'thinking':lesson===0?'welcome':lesson===3?'sitting':'teaching',final()?'Tavi thinking about your challenge':'Tavi guiding your current lesson');keyGuide();renderNav();syncViewport();
  if(document.activeElement===$('practice'))$('feedback').textContent='Ready for the next mission. Your practice area is active.';
@@ -60,6 +62,7 @@ function success(){
  const next={...progress.data,starts:{...progress.data.starts},bestSteps:[...progress.data.bestSteps],lesson,step:stepIndex+1,scene:structuredClone(view.state),history:structuredClone(view.history),future:structuredClone(view.future)};
  if(next.step===lessons[lesson].steps.length){next.completed=[...new Set([...next.completed,lesson])];if(lesson===5){next.finished=true;next.step=stepIndex;}else{next.lesson++;next.step=0;next.scene=initialScene();next.history=[];next.future=[];}}
  next.bestSteps[lesson]=Math.max(next.bestSteps[lesson],stepIndex+1);
+ if(!next.finished)prepareStep(next.scene,lessons[next.lesson].steps[next.step]);
  if(!next.finished)next.starts[stepKey(next.lesson,next.step)]=structuredClone({scene:next.scene,history:next.history,future:next.future});
  // Commit before the feedback delay so reloading or opening the deck cannot lose a completed action.
  progress.data=next;progress.save();
@@ -79,7 +82,7 @@ function accept(token,event){
  if(result.status==='wrong'){wrong();return;}
  const index=engine.index;
  if(s.modal){
- if(index===1){if(!view.begin(s.action,{freeXY:s.freeXY===true,viewAligned:s.viewAligned===true})){engine.reset(s.keys);message('Select an object before starting this tool. Restart the lesson if your scene is empty.');return;}$('operation').textContent=`${s.action.toUpperCase()} active · move pointer · Enter confirms · Esc cancels`;}
+ if(index===1){if(!view.begin(s.action)){engine.reset(s.keys);message('Select an object before starting this tool. Restart the lesson if your scene is empty.');return;}$('operation').textContent=`${s.action.toUpperCase()} active · move pointer · Enter confirms · Esc cancels`;}
  if(s.axis&&token===s.axis){view.constrain(s.axis);$('operation').textContent=`${s.action.toUpperCase()} on ${s.axis.toUpperCase()} · adjust then confirm`;}
  if(s.numeric&&token===String(s.numeric)){view.adjust(s.numeric);$('operation').textContent=`Z: ${s.numeric} units · Enter confirms`;}
  if(s.numeric&&result.status==='matched'){view.confirm();success();}

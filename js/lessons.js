@@ -6,7 +6,7 @@ export const lessons=[
  step('pan','Slide the view sideways.',['Shift + MMB drag'],'pan','Hold Shift and the middle mouse button, then drag.'),
  step('zoom','Get a little closer.',['Wheel'],'zoom','Scroll over the viewport. Your cube stays the same size in the scene.') ]},
  {title:'Move, Rotate & Scale',intro:"Three keys you'll use all the time. Start an action, adjust it, then confirm.",steps:[
- transform('move','Move the cube to a new position.',['G'],'move','Press G, move freely across the XY floor plane, then press Enter or left-click. This introductory trainer exercise keeps Z unchanged; unconstrained G in Blender follows the current view plane.',{freeXY:true}),
+ transform('move','Move the cube to a new position.',['G'],'move','Press G, move freely across the current view plane, then press Enter or left-click.',{}),
  transform('rotate','Turn the cube.',['R'],'rotate','R rotates around your current viewing direction. Move your pointer around the cube, then confirm.',{viewAligned:true}),
  transform('scale','Make the cube bigger.',['S'],'scale','S starts scaling. Move your pointer to the right, then confirm. Scaling changes your design.'),
  transform('cancel','Start moving, then cancel the change.',['G'],'move','Press G, then Esc or right-click. The cube returns to its previous position.',{cancel:true})]},

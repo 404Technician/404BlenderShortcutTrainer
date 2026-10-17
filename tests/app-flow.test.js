@@ -69,7 +69,7 @@ test('full course, modal guards, focus, hints, replay and restart',async()=>{
  }
  assert.match(elements.feedback.textContent,/Nice|Good catch/,s.id);
  if(s.id==='move'){
- const moved=JSON.parse(store.get('tavi-academy-v1')).scene.objects[0];assert.notEqual(moved.x,0);assert.notEqual(moved.y,0);assert.equal(moved.z,0);assert.equal(moved.selected,true);
+ const moved=JSON.parse(store.get('tavi-academy-v1')).scene.objects[0];assert.notEqual(moved.x,0);assert.notEqual(moved.y,0);assert.ok(Number.isFinite(moved.z));assert.equal(moved.selected,true);
  assert.equal(JSON.parse(store.get('tavi-academy-v1')).step,1,'completed action must save before timer');timers.clear();
  for(const id of ids)elements[id]=new Element(id);elements['search-panel'].hidden=true;elements['delete-panel'].hidden=true;elements.practice.append(elements.canvas,elements['search-panel'],elements['delete-panel']);document.activeElement=null;
  await import('../js/app.js?checkpoint-reload');assert.equal(elements.mission.textContent,lessons[1].steps[1].mission);elements.start.onclick();

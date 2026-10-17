@@ -33,7 +33,7 @@ export class Viewport{
  if(action==='panels')s.panels=!s.panels;
  this.draw();
  }
- begin(action,{freeXY=false,viewAligned=false}={}){if(this.modal||!this.active())return false;this.modal={action,freeXY:action==='move'&&freeXY,viewAligned:action==='rotate'&&viewAligned,rotationAxis:camera(this.state,this.canvas.clientWidth,this.canvas.clientHeight).toward.map(v=>-v),offset:[0,0],base:copy(this.state),source:copy(this.active()),axis:null,amount:0,moved:false,pointer:null};if(action==='duplicate'){const o=copy(this.modal.source);this.state.objects.forEach(o=>o.selected=false);o.selected=true;this.state.objects.push(o);this.state.active=this.state.objects.length-1;}this.draw();return true;}
+ begin(action,{freeXY=false,viewAligned=true}={}){if(this.modal||!this.active())return false;this.modal={action,freeXY:['move','duplicate'].includes(action)&&freeXY,viewMove:['move','duplicate'].includes(action)&&!freeXY,viewAligned:action==='rotate'&&viewAligned,rotationAxis:camera(this.state,this.canvas.clientWidth,this.canvas.clientHeight).toward.map(v=>-v),offset:[0,0],base:copy(this.state),source:copy(this.active()),axis:null,amount:0,moved:false,pointer:null};if(action==='duplicate'){const o=copy(this.modal.source);this.state.objects.forEach(o=>o.selected=false);o.selected=true;this.state.objects.push(o);this.state.active=this.state.objects.length-1;}this.draw();return true;}
  constrain(axis){if(this.modal){this.modal.axis=axis;this.modal.pointer=null;this.adjust(this.modal.amount);}}
  adjust(amount){
  if(!this.modal)return;
@@ -44,7 +44,7 @@ export class Viewport{
  if(m.action==='duplicate'){this.state.objects.forEach(o=>o.selected=false);const duplicate=copy(m.source);duplicate.selected=true;this.state.objects.push(duplicate);this.state.active=this.state.objects.length-1;}
  const o=this.active();if(!o)return;
  const axis=m.axis||'x';m.amount=amount;m.moved=Math.abs(amount)>.03;
- if(['move','duplicate'].includes(m.action)){if(m.freeXY&&!m.axis){m.offset=[amount,m.offset[1]];o.x+=m.offset[0];o.y+=m.offset[1];m.moved=Math.hypot(...m.offset)>.03;}else o[axis]+=amount;}
+ if(['move','duplicate'].includes(m.action)){if(m.viewMove&&!m.axis){const cam=camera(m.base,this.canvas.clientWidth,this.canvas.clientHeight);const shift=cam.right.map((v,i)=>v*amount+cam.up[i]*m.offset[1]);['x','y','z'].forEach((k,i)=>o[k]+=shift[i]);m.moved=Math.hypot(amount,m.offset[1])>.03;}else if(m.freeXY&&!m.axis){m.offset=[amount,m.offset[1]];o.x+=m.offset[0];o.y+=m.offset[1];m.moved=Math.hypot(...m.offset)>.03;}else o[axis]+=amount;}
  if(m.action==='scale'){const factor=Math.max(.15,1+amount*.4);if(m.axis)o['s'+axis]*=factor;else ['sx','sy','sz'].forEach(k=>o[k]*=factor);}
  if(m.action==='rotate'){
  if(m.viewAligned||m.axis||m.source.rotation){const direction=m.axis?['x','y','z'].map(k=>k===m.axis?1:0):m.viewAligned?m.rotationAxis:[0,0,1],angle=m.viewAligned&&!m.axis?amount:amount*.6;o.rotation=multiplyQuaternion(axisQuaternion(direction,angle),objectQuaternion(m.source));}
@@ -61,12 +61,16 @@ export class Viewport{
  const size=`${this.canvas.clientWidth}:${this.canvas.clientHeight}`;
  if(!m.pointer||m.pointer.size!==size){m.pointer={x,y,size,amount:m.amount,offset:[...m.offset],angle:m.viewAligned&&!m.axis?this.rotationPointerAngle(x,y):null};return;}
  const dx=x-m.pointer.x,dy=y-m.pointer.y;let amount;
- if(m.viewAligned&&!m.axis){
+ if(m.action==='rotate'&&m.viewAligned&&!m.axis){
  // Re-anchor near the pivot instead of flipping 180 degrees when crossing its center.
  const angle=this.rotationPointerAngle(x,y);if(angle===null){m.pointer.angle=null;return;}
  if(m.pointer.angle==null){m.pointer.angle=angle;return;}
  const delta=Math.atan2(Math.sin(angle-m.pointer.angle),Math.cos(angle-m.pointer.angle));m.pointer.angle=angle;
  this.adjust(m.amount-delta);return;
+ }
+ if(m.viewMove&&!m.axis){
+ const cam=camera(m.base,this.canvas.clientWidth,this.canvas.clientHeight),depth=8-dot([m.source.x,m.source.y,m.source.z],cam.toward);
+ m.offset[1]=m.pointer.offset[1]-dy*depth/cam.focal;this.adjust(m.pointer.amount+dx*depth/cam.focal);return;
  }
  if(m.freeXY&&!m.axis){
  const origin=[m.source.x+m.pointer.offset[0],m.source.y+m.pointer.offset[1],m.source.z],screen=this.project(origin,m.base);
